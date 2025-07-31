@@ -1,22 +1,28 @@
-$hostname_map = inline_template("<%= YAML.load_file('hostnames.yaml')['hosts'] %>")
+exec { 'set_hostname':
+  command => inline_template("<%
+    require 'yaml'
+    require 'socket'
 
-$local_ip = inline_template('<%= Socket.ip_address_list.detect{|intf| intf.ipv4_private?}.ip_address %>')
+    # Load YAML file
+    file = YAML.load_file('/var/lib/jenkins/workspace/puppet_hostnames/hostnames.yaml')
+    host_map = file['hosts']
 
-if $hostname_map[$local_ip] {
-  $target_hostname = $hostname_map[$local_ip]
+    # Get the local IP
+    ip = Socket.ip_address_list.detect(&:ipv4_private?).ip_address
 
-  notify { "Old hostname":
-    message => inline_template('<%= `hostname` %>'),
-  }
+    # Print old hostname
+    old_name = `hostname`.strip
+    puts \"[OLD] Hostname: #{old_name}\"
 
-  exec { "Set hostname to ${target_hostname}":
-    command => "hostnamectl set-hostname ${target_hostname}",
-    path    => ['/bin', '/usr/bin'],
-  }
+    # Lookup new hostname
+    new_name = host_map[ip]
+    raise \"Unrecognized IP #{ip}\" unless new_name
 
-  notify { "New hostname":
-    message => inline_template('<%= `hostname` %>'),
-  }
-} else {
-  fail("Unrecognized host IP: ${local_ip}")
+    # Set the new hostname
+    system(\"hostnamectl set-hostname #{new_name}\")
+
+    # Print new hostname
+    puts \"[NEW] Hostname: #{new_name}\"
+  %>"),
+  path    => ['/bin', '/usr/bin'],
 }
