@@ -1,9 +1,6 @@
 pipeline {
   agent any
 
-  environment {
-    // Add any credentials you want to use later (e.g., for SSH or domain join)
-  }
 
   stages {
     stage('Install Puppet') {
