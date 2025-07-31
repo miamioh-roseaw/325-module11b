@@ -2,11 +2,11 @@ $host_ip = $facts['networking']['ip']
 
 case $host_ip {
   '10.10.10.10': { $target_hostname = 'jenkins-server' }
-  '10.10.10.11': { $target_hostname = 'ham-l' }
-  '10.10.10.12': { $target_hostname = 'mid-l' }
-  '10.10.10.13': { $target_hostname = 'oxf-l' }
-  '10.10.10.14': { $target_hostname = 'mid-w' }
-  '10.10.10.15': { $target_hostname = 'ham-w' }
+  '10.10.10.11': { $target_hostname = 'ham-linux' }
+  '10.10.10.12': { $target_hostname = 'mid-linux' }
+  '10.10.10.13': { $target_hostname = 'oxf-linux' }
+  '10.10.10.14': { $target_hostname = 'mid-win' }
+  '10.10.10.15': { $target_hostname = 'ham-win' }
   default: { fail("Unrecognized host IP: ${host_ip}") }
 }
 
