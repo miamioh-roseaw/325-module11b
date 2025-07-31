@@ -2,42 +2,32 @@ pipeline {
   agent any
 
   environment {
-    SSH_USER = 'student'
-    SSH_PASS = credentials('ssh-creds')
+    PATH = "/opt/puppetlabs/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   }
 
   stages {
-    stage('Deploy Hostname Manifests Remotely') {
+    stage('Install Puppet') {
       steps {
-        script {
-          def host_map = [
-            '10.10.10.11': 'ham-l',
-            '10.10.10.12': 'mid-l',
-            '10.10.10.13': 'oxf-l'
-          ]
+        sh '''
+          echo "[INFO] Installing Puppet..."
+          wget https://apt.puppetlabs.com/puppet7-release-focal.deb -O puppet.deb
+          sudo dpkg -i puppet.deb
+          sudo apt-get update
+          sudo apt-get install -y puppet-agent
+        '''
+      }
+    }
 
-          for (entry in host_map) {
-            def ip = entry.key
-            def new_hostname = entry.value
+    stage('Run Puppet Manifest to Set Hostname') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'jenkins-sudo-creds', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
+          sh '''
+            echo "[INFO] Running Puppet manifest..."
+            export SSH_USER=$SSH_USER
+            export SSH_PASS=$SSH_PASS
 
-            echo "[INFO] Setting hostname on ${ip} to ${new_hostname}..."
-
-            sh """
-              sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@${ip} \\
-                'echo "[OLD] Hostname was: \$(hostname)"'
-
-              sshpass -p "$SSH_PASS" scp -o StrictHostKeyChecking=no set_hostname.pp $SSH_USER@${ip}:/tmp/
-
-              sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@${ip} \\
-                "sudo puppet apply /tmp/set_hostname.pp --execute \\
-                  class { 'hostname_setter':
-                    desired_hostname => '${new_hostname}',
-                  }"
-
-              sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@${ip} \\
-                'echo "[NEW] Hostname is now: \$(hostname)"'
-            """
-          }
+            puppet apply set_hostname.pp
+          '''
         }
       }
     }
