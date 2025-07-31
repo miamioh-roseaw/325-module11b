@@ -1,23 +1,30 @@
-$hostname_data = loadyaml('hostnames.yaml')
+$host_ip     = $facts['networking']['ip']
+$linux_hosts = {
+  '10.10.10.11' => 'ham-l',
+  '10.10.10.12' => 'mid-l',
+  '10.10.10.13' => 'oxf-l',
+}
+$windows_hosts = {
+  '10.10.10.14' => 'mid-w',
+  '10.10.10.15' => 'ham-w',
+}
 
-$hostname_data.each |$fqdn, $hostname| {
-  if $facts['networking']['fqdn'] == $fqdn {
-    if $facts['os']['family'] == 'windows' {
-      notify { "Setting Windows hostname to ${hostname}": }
-      exec { "Rename-WindowsHostname":
-        command   => "powershell.exe -Command \"Rename-Computer -NewName '${hostname}' -Force -Restart\"",
-        provider  => powershell,
-        logoutput => true,
-        unless    => "powershell.exe -Command \"(hostname) -eq '${hostname}'\"",
-      }
-    } elsif $facts['os']['family'] in ['Debian', 'RedHat'] {
-      notify { "Setting Linux hostname to ${hostname}": }
-      exec { "Set-Linux-Hostname":
-        command   => "/usr/bin/hostnamectl set-hostname ${hostname}",
-        path      => ['/usr/bin', '/bin'],
-        logoutput => true,
-        unless    => "/usr/bin/hostname | grep ${hostname}",
-      }
-    }
+if $linux_hosts.has_key($host_ip) {
+  $target_hostname = $linux_hosts[$host_ip]
+
+  exec { "Set-Linux-Hostname":
+    command   => "/usr/bin/hostnamectl set-hostname ${target_hostname}",
+    path      => ['/usr/bin', '/bin'],
+    logoutput => true,
+    unless    => "/usr/bin/hostname | grep ${target_hostname}",
+  }
+} elsif $windows_hosts.has_key($host_ip) {
+  $target_hostname = $windows_hosts[$host_ip]
+
+  exec { "Rename-WindowsHostname":
+    command   => "powershell.exe -Command \"Rename-Computer -NewName '${target_hostname}' -Force -Restart\"",
+    provider  => powershell,
+    logoutput => true,
+    unless    => "powershell.exe -Command \"(hostname) -eq '${target_hostname}'\"",
   }
 }
