@@ -1,35 +1,54 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    PATH = "/opt/puppetlabs/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-  }
-
-  stages {
-    stage('Install Puppet') {
-      steps {
-        sh '''
-          echo "[INFO] Installing Puppet..."
-          wget https://apt.puppetlabs.com/puppet7-release-focal.deb -O puppet.deb
-          sudo dpkg -i puppet.deb
-          sudo apt-get update
-          sudo apt-get install -y puppet-agent
-        '''
-      }
+    environment {
+        SSH_USER = 'student'
+        SSH_PASS = credentials('ssh-creds')  // Jenkins credential ID for Linux SSH password
+        WINDOWS_USER = 'Administrator'
+        WINDOWS_PASS = credentials('win-creds') // Jenkins credential ID for Windows password
     }
 
-    stage('Run Puppet Manifest to Set Hostname') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'jenkins-sudo-creds', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
-          sh '''
-            echo "[INFO] Running Puppet manifest..."
-            export SSH_USER=$SSH_USER
-            export SSH_PASS=$SSH_PASS
+    stages {
+        stage('Install Puppet on Linux') {
+            steps {
+                script {
+                    def linuxHosts = [
+                        '10.10.10.11', // ham-l
+                        '10.10.10.12', // mid-l
+                        '10.10.10.13'  // oxf-l
+                    ]
 
-            puppet apply set_hostname.pp
-          '''
+                    for (host in linuxHosts) {
+                        sh """
+                            echo "[INFO] Installing Puppet on Linux host ${host}..."
+                            sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no ${SSH_USER}@${host} \\
+                              'curl -O https://apt.puppet.com/puppet7-release-jammy.deb && \\
+                               sudo dpkg -i puppet7-release-jammy.deb && \\
+                               sudo apt-get update && \\
+                               sudo apt-get install -y puppet-agent && \\
+                               /opt/puppetlabs/bin/puppet --version'
+                        """
+                    }
+                }
+            }
         }
-      }
+
+        stage('Install Puppet on Windows') {
+            steps {
+                echo '[PLACEHOLDER] Install Puppet on Windows machines using WinRM or PowerShell'
+                // You can later implement:
+                // - PowerShell plugin to run Puppet MSI install via remoting
+                // - WinRM + ps1 script
+            }
+        }
     }
-  }
+
+    post {
+        success {
+            echo '✅ Puppet installed successfully on all devices.'
+        }
+        failure {
+            echo '❌ Puppet installation failed.'
+        }
+    }
 }
