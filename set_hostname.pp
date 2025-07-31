@@ -1,4 +1,4 @@
-$hostname_map = inline_template("<%= YAML.load_file('/hostnames.yaml')['hosts'] %>")
+$hostname_map = inline_template("<%= YAML.load_file('hostnames.yaml')['hosts'] %>")
 
 $local_ip = inline_template('<%= Socket.ip_address_list.detect{|intf| intf.ipv4_private?}.ip_address %>')
 
