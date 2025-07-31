@@ -3,9 +3,9 @@ pipeline {
 
     environment {
         SSH_USER = 'student'
-        SSH_PASS = credentials('ssh-creds')  // Jenkins credential ID for Linux SSH password
+        SSH_PASS = credentials('ssh-creds')         // Jenkins credential ID for Linux SSH password
         WINDOWS_USER = 'Administrator'
-        WINDOWS_PASS = credentials('win-creds') // Jenkins credential ID for Windows password
+        WINDOWS_PASS = credentials('win-creds')     // Jenkins credential ID for Windows password
     }
 
     stages {
@@ -35,9 +35,6 @@ pipeline {
 
         stage('Install Puppet on Windows') {
             steps {
-                echo '[PLACEHOLDER] Install Puppet on Windows machines using WinRM or PowerShell'
-       stage('Install Puppet on Windows') {
-            steps {
                 script {
                     def windowsHosts = [
                         '10.10.10.14', // mid-w
@@ -46,18 +43,16 @@ pipeline {
 
                     for (host in windowsHosts) {
                         powershell """
-                            \$Session = New-PSSession -ComputerName ${host} -Credential (New-Object System.Management.Automation.PSCredential("${env.WINDOWS_USER}", (ConvertTo-SecureString "${env.WINDOWS_PASS}" -AsPlainText -Force)))
-                            Invoke-Command -Session \$Session -ScriptBlock {
+                            \$session = New-PSSession -ComputerName ${host} -Credential (New-Object System.Management.Automation.PSCredential("${env.WINDOWS_USER}", (ConvertTo-SecureString "${env.WINDOWS_PASS}" -AsPlainText -Force)))
+                            Invoke-Command -Session \$session -ScriptBlock {
                                 Invoke-WebRequest -Uri 'https://downloads.puppet.com/windows/puppet7/puppet-agent-x64-latest.msi' -OutFile 'C:\\Temp\\puppet-agent.msi'
                                 Start-Process 'msiexec.exe' -ArgumentList '/i C:\\Temp\\puppet-agent.msi /qn' -Wait
                                 'C:\\Program Files\\Puppet Labs\\Puppet\\bin\\puppet.bat' --version
                             }
-                            Remove-PSSession \$Session
+                            Remove-PSSession \$session
                         """
                     }
                 }
-            }
-        }
             }
         }
     }
