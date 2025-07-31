@@ -1,33 +1,28 @@
 pipeline {
   agent any
 
-  environment {
-    CISCO_CREDS = credentials('cisco-ssh-creds')
-    SUDO_CREDS  = credentials('jenkins-sudo-creds')
-  }
-
   stages {
     stage('Install Puppet') {
       steps {
         sh '''
           echo "[INFO] Installing Puppet..."
-          if ! command -v puppet > /dev/null; then
-            echo "$SUDO_CREDS_PSW" | sudo -S apt-get update
-            echo "$SUDO_CREDS_PSW" | sudo -S apt-get install -y wget
-            wget https://apt.puppetlabs.com/puppet7-release-focal.deb
-            echo "$SUDO_CREDS_PSW" | sudo -S dpkg -i puppet7-release-focal.deb
-            echo "$SUDO_CREDS_PSW" | sudo -S apt-get update
-            echo "$SUDO_CREDS_PSW" | sudo -S apt-get install -y puppet-agent
-          fi
+          wget https://apt.puppet.com/puppet7-release-focal.deb
+          sudo dpkg -i puppet7-release-focal.deb
+          sudo apt-get update
+          sudo apt-get install -y puppet-agent
+          export PATH=/opt/puppetlabs/bin:$PATH
+          puppet --version
         '''
       }
     }
 
-    stage('Run Puppet Hostname Config') {
+    stage('Apply Puppet Manifest') {
+      environment {
+        PATH = "/opt/puppetlabs/bin:$PATH"
+      }
       steps {
-        echo "[INFO] Running Puppet to set hostnames..."
-
         sh '''
+          echo "[INFO] Running Puppet..."
           puppet apply set_hostname.pp
         '''
       }
