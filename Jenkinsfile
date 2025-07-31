@@ -36,9 +36,28 @@ pipeline {
         stage('Install Puppet on Windows') {
             steps {
                 echo '[PLACEHOLDER] Install Puppet on Windows machines using WinRM or PowerShell'
-                // You can later implement:
-                // - PowerShell plugin to run Puppet MSI install via remoting
-                // - WinRM + ps1 script
+       stage('Install Puppet on Windows') {
+            steps {
+                script {
+                    def windowsHosts = [
+                        '10.10.10.14', // mid-w
+                        '10.10.10.15'  // ham-w
+                    ]
+
+                    for (host in windowsHosts) {
+                        powershell """
+                            \$Session = New-PSSession -ComputerName ${host} -Credential (New-Object System.Management.Automation.PSCredential("${env.WINDOWS_USER}", (ConvertTo-SecureString "${env.WINDOWS_PASS}" -AsPlainText -Force)))
+                            Invoke-Command -Session \$Session -ScriptBlock {
+                                Invoke-WebRequest -Uri 'https://downloads.puppet.com/windows/puppet7/puppet-agent-x64-latest.msi' -OutFile 'C:\\Temp\\puppet-agent.msi'
+                                Start-Process 'msiexec.exe' -ArgumentList '/i C:\\Temp\\puppet-agent.msi /qn' -Wait
+                                'C:\\Program Files\\Puppet Labs\\Puppet\\bin\\puppet.bat' --version
+                            }
+                            Remove-PSSession \$Session
+                        """
+                    }
+                }
+            }
+        }
             }
         }
     }
