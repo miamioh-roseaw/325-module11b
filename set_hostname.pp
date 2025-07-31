@@ -1,26 +1,28 @@
-$hostname_map = loadyaml('hostnames.yaml')
+# set_hostname.pp
+require 'yaml'
 
-$linux_hosts   = $hostname_map['linux']
-$windows_hosts = $hostname_map['windows']
+$hostname_data = parseyaml(file('hostnames.yaml'))
 
-if $::osfamily == 'Debian' {
-  $new_hostname = $linux_hosts[$::hostname]
-  if $new_hostname {
-    notify { "Setting Linux hostname to ${new_hostname}": }
-    exec { 'set-linux-hostname':
-      command => "/bin/hostnamectl set-hostname ${new_hostname}",
-      unless  => "/bin/hostnamectl | grep -w '${new_hostname}'",
+$hostname_data.each |$fqdn, $hostname| {
+  if $facts['os']['family'] == 'windows' {
+    if $fqdn == $facts['networking']['fqdn'] {
+      notify { "Setting Windows hostname to ${hostname}": }
+      exec { "Rename-WindowsHostname":
+        command   => "powershell.exe -Command \"Rename-Computer -NewName '${hostname}' -Force -Restart\"",
+        provider  => powershell,
+        logoutput => true,
+        unless    => "powershell.exe -Command \"(hostname) -eq '${hostname}'\"",
+      }
     }
-  }
-}
-
-if $::osfamily == 'Windows' {
-  $new_hostname = $windows_hosts[$::hostname]
-  if $new_hostname {
-    notify { "Setting Windows hostname to ${new_hostname}": }
-    exec { 'set-windows-hostname':
-      command => "powershell.exe -Command \"Rename-Computer -NewName '${new_hostname}' -Force -Restart\"",
-      unless  => "powershell.exe -Command \"\$env:COMPUTERNAME -eq '${new_hostname}'\"",
+  } elsif $facts['os']['family'] == 'Debian' or $facts['os']['family'] == 'RedHat' {
+    if $fqdn == $facts['networking']['fqdn'] {
+      notify { "Setting Linux hostname to ${hostname}": }
+      exec { "Set-Linux-Hostname":
+        command   => "/usr/bin/hostnamectl set-hostname ${hostname}",
+        path      => ['/usr/bin', '/bin'],
+        logoutput => true,
+        unless    => "/usr/bin/hostname | grep ${hostname}",
+      }
     }
   }
 }
