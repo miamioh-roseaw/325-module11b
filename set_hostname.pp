@@ -1,6 +1,7 @@
 $host_ip = $facts['networking']['ip']
 
 case $host_ip {
+  '10.10.10.10': { $target_hostname = 'jenkins-server' }
   '10.10.10.11': { $target_hostname = 'ham-l' }
   '10.10.10.12': { $target_hostname = 'mid-l' }
   '10.10.10.13': { $target_hostname = 'oxf-l' }
@@ -9,7 +10,6 @@ case $host_ip {
   default: { fail("Unrecognized host IP: ${host_ip}") }
 }
 
-# Determine OS and execute the appropriate command
 if $facts['os']['family'] == 'windows' {
   exec { "Rename-WindowsHostname":
     command   => "powershell.exe -Command \"Rename-Computer -NewName '${target_hostname}' -Force -Restart\"",
